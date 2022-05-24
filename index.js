@@ -3,6 +3,7 @@ const cors = require("cors");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 
 require("dotenv").config();
+const jwt = require("jsonwebtoken");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -19,6 +20,24 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
+function verrifyToken(req, res, next) {
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res.status(401).send({ message: "unauthorization accss" });
+  }
+
+  const token = authorization.split(" ")[1];
+  jwt.verify(token, process.env.ACCES_TOKEN, function (err, decoded) {
+    if (err) {
+      return res.status(403).send({ message: "forbidden access" });
+    }
+
+    req.decoded = decoded;
+    next();
+  });
+  console.log("authorization");
+}
+
 async function run() {
   try {
     await client.connect();
@@ -26,15 +45,80 @@ async function run() {
     const serviceCollection = client
       .db("doctors_portal")
       .collection("services");
+
     const bookingCollection = client
       .db("doctors_portal")
       .collection("bookings");
 
-    app.get("/service", async (rew, res) => {
+    const userCollection = client.db("doctors_portal").collection("users");
+
+    app.get("/service", async (req, res) => {
       const query = {};
       const cursor = serviceCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
+    });
+
+    app.get("/user", verrifyToken, async (req, res) => {
+      const users = await userCollection.find().toArray();
+      res.send(users);
+    });
+
+
+app.get("/admin/:email", async(req,res)=>{
+
+  const email = req.params.email;
+  const user = await userCollection.findOne({email:email});
+  const isAdmin = user.role === "admin";
+  res.send({admin:isAdmin})
+})
+
+    app.put("/user/admin/:email", verrifyToken, async (req, res) => {
+      const email = req.params.email;
+      const decodedEmail = req.decoded.email;
+      const requesterDecodedEmail = await userCollection.findOne({
+        email: decodedEmail,
+      });
+      if (requesterDecodedEmail.role === "admin") {
+        const filter = { email: email };
+        const updateDoc = {
+          $set: { role: "admin" },
+        };
+
+        const result = await userCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      }else{
+
+        return res.status(403).send({message : "wrong access"})
+      }
+     
+    });
+
+    app.put("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const filter = { email: email };
+      const options = { upsert: true };
+      const user = req.body;
+      const updateDoc = {
+        $set: user,
+      };
+      const result = await userCollection.updateOne(filter, updateDoc, options);
+      const token = jwt.sign({ email: email }, process.env.ACCES_TOKEN, {
+        expiresIn: "1h",
+      });
+      res.send({ result, token });
+    });
+
+    app.get("/booking", verrifyToken, async (req, res) => {
+      const patient = req.query.patientsEmail;
+      const decodedEmail = req.decoded.email;
+      if (patient === decodedEmail) {
+        const query = { patientsEmail: patient };
+        const bookings = await bookingCollection.find(query).toArray();
+        return res.send(bookings);
+      } else {
+        return res.status(403).send({ message: "forvifeneen sac" });
+      }
     });
 
     app.get("/avaiable", async (req, res) => {
