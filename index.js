@@ -22,6 +22,7 @@ const client = new MongoClient(uri, {
 
 function verrifyToken(req, res, next) {
   const authorization = req.headers.authorization;
+  // console.log(req.headers.authorization);
   if (!authorization) {
     return res.status(401).send({ message: "unauthorization accss" });
   }
@@ -35,7 +36,9 @@ function verrifyToken(req, res, next) {
     req.decoded = decoded;
     next();
   });
-  console.log("authorization");
+  // console.log("authorization");
+  // console.log(req.headers.authorization);
+
 }
 
 async function run() {
@@ -51,10 +54,30 @@ async function run() {
       .collection("bookings");
 
     const userCollection = client.db("doctors_portal").collection("users");
+    const doctorCollection = client.db("doctors_portal").collection("doctors");
+
+
+    const verrifyAdmin = async(req,res,next)=>{
+
+   
+      const decodedEmail = req.decoded.email;
+      const requesterDecodedEmail = await userCollection.findOne({
+        email: decodedEmail,
+      });
+      if (requesterDecodedEmail.role === "admin") {
+        next();
+
+      }else{
+        return res.status(403).send({message : "forbidden access"})
+
+      }
+
+
+    }
 
     app.get("/service", async (req, res) => {
       const query = {};
-      const cursor = serviceCollection.find(query);
+      const cursor = serviceCollection.find(query).project({name: 1});
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -73,13 +96,13 @@ app.get("/admin/:email", async(req,res)=>{
   res.send({admin:isAdmin})
 })
 
-    app.put("/user/admin/:email", verrifyToken, async (req, res) => {
+    app.put("/user/admin/:email", verrifyToken,verrifyAdmin, async (req, res) => {
       const email = req.params.email;
-      const decodedEmail = req.decoded.email;
-      const requesterDecodedEmail = await userCollection.findOne({
-        email: decodedEmail,
-      });
-      if (requesterDecodedEmail.role === "admin") {
+      // const decodedEmail = req.decoded.email;
+      // const requesterDecodedEmail = await userCollection.findOne({
+      //   email: decodedEmail,
+      // });
+      // if (requesterDecodedEmail.role === "admin") {
         const filter = { email: email };
         const updateDoc = {
           $set: { role: "admin" },
@@ -87,10 +110,11 @@ app.get("/admin/:email", async(req,res)=>{
 
         const result = await userCollection.updateOne(filter, updateDoc);
         res.send(result);
-      }else{
+      // }
+      // else{
 
-        return res.status(403).send({message : "wrong access"})
-      }
+      //   return res.status(403).send({message : "wrong access"})
+      // }
      
     });
 
@@ -164,7 +188,34 @@ app.get("/admin/:email", async(req,res)=>{
       const result = await bookingCollection.insertOne(booking);
       return res.send({ success: true, result });
     });
-  } finally {
+
+
+    /////doctors
+    app.post("/doctors",verrifyToken, verrifyAdmin, async (req,res) =>{
+
+      const doctors = req.body;
+      const result = await doctorCollection.insertOne(doctors);
+      res.send(result);
+
+    })
+
+
+
+    // app.get("/doctors",verrifyToken,verrifyAdmin, async(req, res) =>{
+
+    //   const doctors = await doctorCollection.find().toArray();
+    //   // const users = await userCollection.find().toArray();
+    //   res.send(doctors)
+    //   // res.send(users);
+    // })
+
+    app.get("/doctor", verrifyToken, verrifyAdmin, async (req, res) => {
+      const doctors = await doctorCollection.find().toArray();
+      res.send(doctors);
+    });
+  } 
+  
+  finally {
   }
 }
 run().catch(console.dir);
