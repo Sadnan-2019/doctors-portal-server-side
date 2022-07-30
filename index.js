@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
@@ -201,18 +201,31 @@ app.get("/admin/:email", async(req,res)=>{
 
 
 
-    // app.get("/doctors",verrifyToken,verrifyAdmin, async(req, res) =>{
-
-    //   const doctors = await doctorCollection.find().toArray();
-    //   // const users = await userCollection.find().toArray();
-    //   res.send(doctors)
-    //   // res.send(users);
-    // })
+    
 
     app.get("/doctor", verrifyToken, verrifyAdmin, async (req, res) => {
       const doctors = await doctorCollection.find().toArray();
       res.send(doctors);
     });
+    
+
+
+    app.delete("/doctor/:email", verrifyToken, verrifyAdmin, async (req,res) =>{
+      const email = req.params.email;
+      const filter ={email: email}
+      const result = await doctorCollection.deleteOne(filter);
+      res.send(result);
+      
+    })
+
+    app.get("/booking/:id", verrifyToken,   async(req,res) =>{
+
+      const id = req.params.id;
+      const query = {_id : ObjectId(id)};
+      const result = await bookingCollection.findOne(query);
+      res.send(result);
+    }) 
+
   } 
   
   finally {
