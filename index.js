@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
@@ -159,7 +161,7 @@ app.get("/admin/:email", async(req,res)=>{
         // step 4 find booking from match service
         const bookingsMatch = bookings.filter(
           (booked) =>
-            // step 5 filtering for sigleobject matching both collection and passing a array of object
+            // step 5 filtering for singleobject matching both collection and passing a array of object
             booked.treatment === service.name
         );
         //step 6 find ["","",""]
