@@ -226,7 +226,24 @@ app.get("/admin/:email", async(req,res)=>{
       const query = {_id : ObjectId(id)};
       const result = await bookingCollection.findOne(query);
       res.send(result);
-    }) 
+    })
+    
+    app.post("/create-payment-intent", verrifyToken, async (req, res) => {
+
+      const service = req.body;
+      const price = service.price;
+      const amount = price*100;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: [
+          "card"
+        ],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    })
 
   } 
   
