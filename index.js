@@ -1,5 +1,6 @@
 const express = require("express");
 const app = express();
+const SSLCommerzPayment = require("sslcommerz");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 
@@ -61,7 +62,9 @@ async function run() {
 
     const userCollection = client.db("doctors_portal").collection("users");
     const doctorCollection = client.db("doctors_portal").collection("doctors");
-    const paymentCollection = client.db("doctors_portal").collection("payments");
+    const paymentCollection = client
+      .db("doctors_portal")
+      .collection("payments");
 
     const verrifyAdmin = async (req, res, next) => {
       const decodedEmail = req.decoded.email;
@@ -222,23 +225,24 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/booking/:id", verrifyToken, async(req,res) =>{
-
+    app.patch("/booking/:id", verrifyToken, async (req, res) => {
       const id = req.params.id;
       const payment = req.body;
-      const filter = {_id: ObjectId(id)};
-      const updatedDoc ={
-        $set:{
-          paid : true,
-          transactionId: payment.transactionId
-
-        }
-      }
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          paid: true,
+          transactionId: payment.transactionId,
+        },
+      };
 
       const paymentAdd = await paymentCollection.insertOne(payment);
-      const updatingBooking  = await bookingCollection.updateOne(filter,updatedDoc);
-      res.send(updatedDoc)
-    })
+      const updatingBooking = await bookingCollection.updateOne(
+        filter,
+        updatedDoc
+      );
+      res.send(updatedDoc);
+    });
 
     app.post("/create-payment-intent", async (req, res) => {
       const service = req.body;
@@ -257,11 +261,64 @@ async function run() {
       }
     });
 
+    ////SSL EOMERCE
+
+    app.use("/ssl-request", async (req, res, next) => {
+      const data = {
+        total_amount: 100,
+        currency: "EUR",
+        tran_id: "REF123",
+        success_url: "http://yoursite.com/success",
+        fail_url: "http://yoursite.com/fail",
+        cancel_url: "http://yoursite.com/cancel",
+        ipn_url: "http://yoursite.com/ipn",
+        shipping_method: "Courier",
+        product_name: "Computer.",
+        product_category: "Electronic",
+        product_profile: "general",
+        cus_name: "Customer Name",
+        cus_email: "cust@yahoo.com",
+        cus_add1: "Dhaka",
+        cus_add2: "Dhaka",
+        cus_city: "Dhaka",
+        cus_state: "Dhaka",
+        cus_postcode: "1000",
+        cus_country: "Bangladesh",
+        cus_phone: "01711111111",
+        cus_fax: "01711111111",
+        ship_name: "Customer Name",
+        ship_add1: "Dhaka",
+        ship_add2: "Dhaka",
+        ship_city: "Dhaka",
+        ship_state: "Dhaka",
+        ship_postcode: 1000,
+        ship_country: "Bangladesh",
+        multi_card_name: "mastercard",
+        value_a: "ref001_A",
+        value_b: "ref002_B",
+        value_c: "ref003_C",
+        value_d: "ref004_D",
+      };
+      const sslcommer = new SSLCommerzPayment(
+        process.env.STORE_ID,
+        process.env.STORE_PASSWORD,
+        false
+      ); //true for live default false for sandbox
+      sslcommer.init(data).then((data) => {
+        if (data?.GatewayPageURL) {
+          return res.status(200).redirect(data?.GatewayPageURL);
+        } else {
+          return res.status(400).json({
+            message: "Ssl session not success",
+          });
+        }
+      });
+    });
+
+    app.post("/ssl-payment-suucess", async(req,res,next)=>{
 
 
-
-
-
+    })
   } finally {
   }
 }
