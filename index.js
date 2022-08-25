@@ -268,10 +268,10 @@ async function run() {
         total_amount: 100,
         currency: "EUR",
         tran_id: "REF123",
-        success_url: "http://yoursite.com/success",
-        fail_url: "http://yoursite.com/fail",
-        cancel_url: "http://yoursite.com/cancel",
-        ipn_url: "http://yoursite.com/ipn",
+        success_url: `${process.env.ROOT}/ssl-payment-suucess`,
+        fail_url: `${process.env.ROOT}/ssl-payment-failure`,
+        cancel_url: `${process.env.ROOT}/ssl-payment-cancel`,
+        ipn_url: `${process.env.ROOT}/ssl-payment-ipn`,
         shipping_method: "Courier",
         product_name: "Computer.",
         product_category: "Electronic",
@@ -305,6 +305,7 @@ async function run() {
         false
       ); //true for live default false for sandbox
       sslcommer.init(data).then((data) => {
+        console.log(data)
         if (data?.GatewayPageURL) {
           return res.status(200).redirect(data?.GatewayPageURL);
         } else {
@@ -316,6 +317,34 @@ async function run() {
     });
 
     app.post("/ssl-payment-suucess", async(req,res,next)=>{
+      return res.status(200).json({
+        data:
+        req.body
+      })
+
+
+    })
+    app.post("/ssl-payment-failure", async(req,res,next)=>{
+      return res.status(400).json({
+        data:
+        req.body
+      })
+
+
+    })
+    app.post("/ssl-payment-cancel", async(req,res,next)=>{
+      return res.status(200).json({
+        data:
+        req.body
+      })
+
+
+    })
+    app.post("/ssl-payment-ipn", async(req,res,next)=>{
+      return res.status(200).json({
+        data:
+        req.body
+      })
 
 
     })
